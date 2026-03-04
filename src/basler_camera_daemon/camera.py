@@ -12,6 +12,8 @@ from .hub import FrameHub
 
 log = logging.getLogger(__name__)
 
+# The converter always outputs RGB8packed. For Mono8 cameras this replicates
+# the single channel into all three, producing a (H, W, 3) array.
 _PIXEL_FORMAT_PREFERENCE = ["BayerRG8", "BayerGB8", "BayerGR8", "BayerBG8", "RGB8", "BGR8", "Mono8"]
 
 
@@ -33,9 +35,12 @@ class CameraService:
 
     @property
     def model_name(self) -> str:
-        return self._model_name
+        with self._raw_lock:
+            return self._model_name
 
     def get_latest_raw(self) -> np.ndarray | None:
+        # Returns a reference to the internal array, not a copy.
+        # Callers must treat the array as read-only.
         with self._raw_lock:
             return self._latest_raw
 
@@ -47,6 +52,8 @@ class CameraService:
         self._stop_event.set()
         if self._thread is not None:
             self._thread.join(timeout=5)
+            if self._thread.is_alive():
+                log.error("Camera thread did not stop within 5 s")
 
     def _configure(self, camera: pylon.InstantCamera) -> None:
         cam = camera.GetNodeMap()
@@ -58,23 +65,23 @@ class CameraService:
         ]:
             try:
                 cam.GetNode(name).SetValue(value)
-            except Exception:
-                log.warning("%s not available", name)
+            except Exception as exc:
+                log.warning("%s not available: %s", name, exc)
 
         try:
             upper = cam.GetNode("AutoExposureTimeUpperLimit")
             limit = min(self._config.auto_exposure_max_us, int(upper.GetMax()))
             upper.SetValue(limit)
             log.info("AutoExposureTimeUpperLimit = %d µs", limit)
-        except Exception:
-            log.warning("AutoExposureTimeUpperLimit not available")
+        except Exception as exc:
+            log.warning("AutoExposureTimeUpperLimit not available: %s", exc)
 
         for dim in ("Width", "Height"):
             try:
                 node = cam.GetNode(dim)
                 node.SetValue(node.GetMax())
-            except Exception:
-                log.warning("%s max not settable", dim)
+            except Exception as exc:
+                log.warning("%s max not settable: %s", dim, exc)
 
         try:
             pf_node = cam.GetNode("PixelFormat")
@@ -84,8 +91,8 @@ class CameraService:
                     pf_node.SetValue(fmt)
                     log.info("PixelFormat = %s", fmt)
                     break
-        except Exception:
-            log.warning("PixelFormat not configurable")
+        except Exception as exc:
+            log.warning("PixelFormat not configurable: %s", exc)
 
     def _grab_loop(self) -> None:
         converter = pylon.ImageFormatConverter()
@@ -96,7 +103,8 @@ class CameraService:
         try:
             camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
             camera.Open()
-            self._model_name = camera.GetDeviceInfo().GetModelName()
+            with self._raw_lock:
+                self._model_name = camera.GetDeviceInfo().GetModelName()
             log.info("Camera opened: %s", self._model_name)
 
             self._configure(camera)
