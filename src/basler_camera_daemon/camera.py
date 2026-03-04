@@ -39,8 +39,8 @@ class CameraService:
             return self._model_name
 
     def get_latest_raw(self) -> np.ndarray | None:
-        # Returns a reference to the internal array, not a copy.
-        # Callers must treat the array as read-only.
+        # Returns a copy of the most recently grabbed frame.
+        # The copy is owned by Python; callers may read it safely after this call returns.
         with self._raw_lock:
             return self._latest_raw
 
@@ -131,7 +131,7 @@ class CameraService:
                         arr: np.ndarray = rgb.GetArray()
                         jpeg = self._encoder.encode(arr, self._config.stream_quality)
                         with self._raw_lock:
-                            self._latest_raw = arr
+                            self._latest_raw = arr.copy()
                         self._hub.broadcast(jpeg)
                     else:
                         log.warning("Grab failed: %s", grab.ErrorDescription)

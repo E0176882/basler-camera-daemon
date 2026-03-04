@@ -17,7 +17,7 @@ Install the [Basler pylon SDK](https://www.baslerweb.com/en/software/pylon/) **b
 
 ### Python
 
-Python 3.8 or newer.
+Python 3.13 or newer.
 
 ## Installation
 

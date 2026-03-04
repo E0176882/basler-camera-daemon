@@ -49,7 +49,7 @@ class WebServer:
 
     async def _on_shutdown(self, app: web.Application) -> None:
         log.info("Server shutting down, stopping camera…")
-        self._camera.stop()
+        await asyncio.get_running_loop().run_in_executor(None, self._camera.stop)
 
     async def _handle_viewer(self, request: web.Request) -> web.Response:
         return web.Response(text=self._viewer_html, content_type="text/html", charset="utf-8")
