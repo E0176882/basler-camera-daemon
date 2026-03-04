@@ -21,7 +21,7 @@ Python 3.13 or newer.
 
 ## Installation
 
-Requires Python 3.13+ and the Basler pylon SDK (macOS/Linux only — Windows users run the pre-built exe from [GitHub Releases](../../releases)).
+Requires Python 3.13+ and the Basler pylon SDK installed on all platforms (macOS/Linux for development; Windows users run the pre-built exe from [GitHub Releases](../../releases) but still need the pylon SDK for the USB camera driver — see Prerequisites above).
 
 ```bash
 pip install -e ".[dev]"
@@ -128,3 +128,5 @@ The pypylon `ImageFormatConverter` handles Bayer → RGB8 conversion before JPEG
 **macOS: `Framework not found pylon`** — re-run the pylon SDK installer and ensure `/Library/Frameworks/pylon.framework` exists.
 
 **Windows: DLL load failed** — ensure the pylon SDK installer ran and the pylon bin directory is on `PATH`. Reboot if needed.
+
+**Windows: camera not detected (exe runs but no device found)** — the `pypylon` runtime is bundled in the exe, but the USB Vision kernel driver is not. Run the Basler pylon SDK installer once on the Windows machine to install the driver, then restart the exe. The camera should be detected.
