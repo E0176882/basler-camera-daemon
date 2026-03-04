@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import threading
+from typing import Any
 
 import numpy as np
 from pypylon import pylon  # type: ignore[import-untyped, unused-ignore]
@@ -29,16 +30,22 @@ class CameraService:
         self._hub = hub
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
-        self._model_name = "unknown"
         self._raw_lock = threading.Lock()
-        self._latest_raw: np.ndarray | None = None
+        self._model_name = "unknown"
+        self._latest_raw: np.ndarray[Any, np.dtype[Any]] | None = None
+        self._connected = False
 
     @property
     def model_name(self) -> str:
         with self._raw_lock:
             return self._model_name
 
-    def get_latest_raw(self) -> np.ndarray | None:
+    @property
+    def is_connected(self) -> bool:
+        with self._raw_lock:
+            return self._connected
+
+    def get_latest_raw(self) -> np.ndarray[Any, np.dtype[Any]] | None:
         # Returns a copy of the most recently grabbed frame.
         # The copy is owned by Python; callers may read it safely after this call returns.
         with self._raw_lock:
@@ -99,52 +106,60 @@ class CameraService:
         converter.OutputPixelFormat = pylon.PixelType_RGB8packed
         converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
 
-        camera: pylon.InstantCamera | None = None
-        try:
-            camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
-            camera.Open()
-            with self._raw_lock:
-                self._model_name = camera.GetDeviceInfo().GetModelName()
-            log.info("Camera opened: %s", self._model_name)
+        backoff = 1.0
+        while not self._stop_event.is_set():
+            camera: pylon.InstantCamera | None = None
+            try:
+                camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
+                camera.Open()
+                with self._raw_lock:
+                    self._model_name = camera.GetDeviceInfo().GetModelName()
+                    self._connected = True
+                self._hub.broadcast_status(True)
+                log.info("Camera opened: %s", self._model_name)
+                backoff = 1.0  # reset on successful connect
 
-            self._configure(camera)
-            camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
-            log.info("Grab loop started")
+                self._configure(camera)
+                camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+                log.info("Grab loop started")
 
-            while not self._stop_event.is_set():
-                if not camera.IsGrabbing():
-                    log.warning("Camera stopped grabbing unexpectedly")
-                    break
+                while not self._stop_event.is_set() and camera.IsGrabbing():
+                    try:
+                        grab = camera.RetrieveResult(200, pylon.TimeoutHandling_Return)
+                    except pylon.GenericException as exc:
+                        log.warning("RetrieveResult error: %s", exc)
+                        continue
 
-                try:
-                    grab = camera.RetrieveResult(200, pylon.TimeoutHandling_Return)
-                except pylon.GenericException as exc:
-                    log.warning("RetrieveResult error: %s", exc)
-                    continue
+                    if grab is None:
+                        continue
 
-                if grab is None:
-                    continue
+                    try:
+                        if grab.GrabSucceeded():
+                            rgb = converter.Convert(grab)
+                            arr: np.ndarray[Any, np.dtype[Any]] = rgb.GetArray()
+                            jpeg = self._encoder.encode(arr, self._config.stream_quality)
+                            with self._raw_lock:
+                                self._latest_raw = arr.copy()
+                            self._hub.broadcast(jpeg)
+                        else:
+                            log.warning("Grab failed: %s", grab.ErrorDescription)
+                    finally:
+                        grab.Release()
 
-                try:
-                    if grab.GrabSucceeded():
-                        rgb = converter.Convert(grab)
-                        arr: np.ndarray = rgb.GetArray()
-                        jpeg = self._encoder.encode(arr, self._config.stream_quality)
-                        with self._raw_lock:
-                            self._latest_raw = arr.copy()
-                        self._hub.broadcast(jpeg)
-                    else:
-                        log.warning("Grab failed: %s", grab.ErrorDescription)
-                finally:
-                    grab.Release()
+            except pylon.GenericException as exc:
+                log.warning("Camera error: %s \u2014 retrying in %.0f s", exc, backoff)
+            finally:
+                with self._raw_lock:
+                    self._connected = False
+                self._hub.broadcast_status(False)
+                if camera is not None:
+                    try:
+                        camera.StopGrabbing()
+                        camera.Close()
+                    except Exception:
+                        pass
+                    log.info("Camera closed")
 
-        except pylon.GenericException as exc:
-            log.error("Camera error: %s", exc)
-        finally:
-            if camera is not None:
-                try:
-                    camera.StopGrabbing()
-                    camera.Close()
-                except Exception:
-                    pass
-                log.info("Camera closed")
+            if not self._stop_event.is_set():
+                self._stop_event.wait(backoff)
+                backoff = min(backoff * 2, 30.0)
