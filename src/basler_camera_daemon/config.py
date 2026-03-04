@@ -16,7 +16,5 @@ class CameraConfig:
         # stream_quality and capture_quality are internal constants, not env-configurable.
         return cls(
             port=int(os.environ.get("BASLER_PORT", 8082)),
-            auto_exposure_max_us=int(
-                os.environ.get("BASLER_AUTO_EXPOSURE_MAX_US", 10000)
-            ),
+            auto_exposure_max_us=int(os.environ.get("BASLER_AUTO_EXPOSURE_MAX_US", 10000)),
         )

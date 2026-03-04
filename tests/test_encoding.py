@@ -15,6 +15,7 @@ def _solid_frame(h: int = 4, w: int = 4) -> np.ndarray:
 def _is_jpeg(data: bytes) -> bool:
     """Return True if data is a valid, decodable JPEG."""
     from PIL import Image
+
     try:
         with Image.open(io.BytesIO(data)) as img:
             img.verify()
