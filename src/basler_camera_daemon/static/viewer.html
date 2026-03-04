@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Basler Camera</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #111; color: #eee; font-family: system-ui, sans-serif;
+           display: flex; flex-direction: column; height: 100vh; }
+    header { padding: 12px 20px; background: #1a1a1a; display: flex;
+             align-items: center; gap: 16px; }
+    h1 { font-size: 1rem; font-weight: 600; }
+    #model { color: #888; font-size: 0.875rem; }
+    #status { margin-left: auto; font-size: 0.8rem; padding: 4px 10px;
+              border-radius: 12px; background: #333; }
+    #status.connected    { background: #1a3a1a; color: #4ade80; }
+    #status.disconnected { background: #3a1a1a; color: #f87171; }
+    main { flex: 1; display: flex; align-items: center; justify-content: center;
+           overflow: hidden; padding: 16px; gap: 16px; }
+    #feed { max-width: 100%; max-height: 100%; object-fit: contain;
+            border-radius: 4px; background: #222; }
+    footer { padding: 12px 20px; background: #1a1a1a; display: flex;
+             gap: 12px; align-items: center; }
+    button { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer;
+             font-size: 0.875rem; font-weight: 500; }
+    #btn-capture { background: #2563eb; color: #fff; }
+    #btn-capture:hover    { background: #1d4ed8; }
+    #btn-capture:disabled { opacity: 0.5; cursor: not-allowed; }
+    #capture-label { font-size: 0.8rem; color: #888; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Basler Camera</h1>
+    <span id="model">&mdash;</span>
+    <span id="status">connecting&hellip;</span>
+  </header>
+  <main>
+    <img id="feed" alt="Live stream">
+  </main>
+  <footer>
+    <button id="btn-capture" disabled>Capture</button>
+  </footer>
+  <script>
+    const feed         = document.getElementById("feed");
+    const statusEl     = document.getElementById("status");
+    const modelEl      = document.getElementById("model");
+    const btnCapture = document.getElementById("btn-capture");
+
+    fetch("/health").then(r => r.json()).then(d => {
+      modelEl.textContent = d.model || "&mdash;";
+    }).catch(() => {});
+
+    let prevUrl = null;
+    function connect() {
+      const ws = new WebSocket(`ws://${location.host}/stream`);
+      ws.binaryType = "arraybuffer";
+
+      ws.onopen = () => {
+        statusEl.textContent = "live";
+        statusEl.className = "connected";
+        btnCapture.disabled = false;
+      };
+      ws.onmessage = (e) => {
+        if (prevUrl) URL.revokeObjectURL(prevUrl);
+        const blob = new Blob([e.data], { type: "image/jpeg" });
+        prevUrl = URL.createObjectURL(blob);
+        feed.src = prevUrl;
+      };
+      ws.onclose = () => {
+        statusEl.textContent = "disconnected &mdash; retrying&hellip;";
+        statusEl.className = "disconnected";
+        btnCapture.disabled = true;
+        setTimeout(connect, 2000);
+      };
+      ws.onerror = () => ws.close();
+    }
+    connect();
+
+    btnCapture.addEventListener("click", async () => {
+      btnCapture.disabled = true;
+      try {
+        const r = await fetch("/capture", { method: "POST" });
+        const d = await r.json();
+        if (d.image_base64) {
+          const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, -1);
+          const a = document.createElement("a");
+          a.href = "data:image/jpeg;base64," + d.image_base64;
+          a.download = `capture-${ts}.jpg`;
+          a.click();
+        }
+      } finally {
+        btnCapture.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
