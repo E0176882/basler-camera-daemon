@@ -63,6 +63,12 @@ class WebServer:
 
         q: asyncio.Queue[bytes | str] = asyncio.Queue(maxsize=1)
         self._hub.add(q)
+        # Push current camera state immediately so the viewer overlay is correct on connect.
+        q.put_nowait(
+            '{"type":"status","connected":true}'
+            if self._camera.is_connected
+            else '{"type":"status","connected":false}'
+        )
         log.info("WS client connected (%d total)", self._hub.client_count())
         try:
             while not ws.closed:
