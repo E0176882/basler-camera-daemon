@@ -12,6 +12,8 @@ class FrameHub:
         self._loop: asyncio.AbstractEventLoop | None = None
 
     def set_loop(self, loop: asyncio.AbstractEventLoop) -> None:
+        """Store the running event loop. Call once from the asyncio startup handler
+        before the camera thread starts broadcasting."""
         self._loop = loop
 
     def add(self, queue: asyncio.Queue[bytes]) -> None:
