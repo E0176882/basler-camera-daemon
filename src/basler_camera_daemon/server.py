@@ -61,14 +61,17 @@ class WebServer:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 
-        q: asyncio.Queue[bytes] = asyncio.Queue(maxsize=1)
+        q: asyncio.Queue[bytes | str] = asyncio.Queue(maxsize=1)
         self._hub.add(q)
         log.info("WS client connected (%d total)", self._hub.client_count())
         try:
             while not ws.closed:
                 try:
-                    frame = await asyncio.wait_for(q.get(), timeout=5.0)
-                    await ws.send_bytes(frame)
+                    item = await asyncio.wait_for(q.get(), timeout=5.0)
+                    if isinstance(item, bytes):
+                        await ws.send_bytes(item)
+                    else:
+                        await ws.send_str(item)
                 except TimeoutError:
                     pass
                 except (asyncio.CancelledError, ClientConnectionResetError):
