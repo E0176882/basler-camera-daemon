@@ -50,7 +50,7 @@ def main() -> None:
         _run()
         return
 
-    from . import service_manager  # type: ignore[attr-defined]
+    from . import service_manager
 
     commands = {
         "install": service_manager.install,

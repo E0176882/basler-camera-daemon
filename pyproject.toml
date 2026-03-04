@@ -12,6 +12,7 @@ dependencies = [
     "numpy>=1.26",
     "Pillow>=10.0",
     "pypylon>=4.0",
+    "pywin32; sys_platform == 'win32'",
 ]
 
 [project.optional-dependencies]
@@ -41,6 +42,10 @@ mypy_path = ["src"]
 
 [[tool.mypy.overrides]]
 module = "pypylon.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["win32service", "win32serviceutil", "win32event", "win32api", "pywintypes"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
