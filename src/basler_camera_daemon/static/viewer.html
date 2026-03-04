@@ -48,7 +48,7 @@
     const btnCapture = document.getElementById("btn-capture");
 
     fetch("/health").then(r => r.json()).then(d => {
-      modelEl.textContent = d.model || "&mdash;";
+      modelEl.textContent = d.model || "\u2014";
     }).catch(() => {});
 
     let prevUrl = null;
@@ -68,7 +68,7 @@
         feed.src = prevUrl;
       };
       ws.onclose = () => {
-        statusEl.textContent = "disconnected &mdash; retrying&hellip;";
+        statusEl.textContent = "disconnected \u2014 retrying\u2026";
         statusEl.className = "disconnected";
         btnCapture.disabled = true;
         setTimeout(connect, 2000);

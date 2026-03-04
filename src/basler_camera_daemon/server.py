@@ -5,8 +5,7 @@ import base64
 import importlib.resources
 import logging
 
-from aiohttp import web
-from aiohttp.client_exceptions import ClientConnectionResetError
+from aiohttp import ClientConnectionResetError, web
 
 from .camera import CameraService
 from .config import CameraConfig
@@ -45,7 +44,7 @@ class WebServer:
         return app
 
     async def _on_startup(self, app: web.Application) -> None:
-        self._hub.set_loop(asyncio.get_event_loop())
+        self._hub.set_loop(asyncio.get_running_loop())
         self._camera.start()
 
     async def _on_shutdown(self, app: web.Application) -> None:
@@ -53,7 +52,7 @@ class WebServer:
         self._camera.stop()
 
     async def _handle_viewer(self, request: web.Request) -> web.Response:
-        return web.Response(text=self._viewer_html, content_type="text/html")
+        return web.Response(text=self._viewer_html, content_type="text/html", charset="utf-8")
 
     async def _handle_health(self, request: web.Request) -> web.Response:
         return web.json_response({"status": "ok", "model": self._camera.model_name})
