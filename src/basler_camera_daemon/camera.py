@@ -150,8 +150,10 @@ class CameraService:
                 log.warning("Camera error: %s \u2014 retrying in %.0f s", exc, backoff)
             finally:
                 with self._raw_lock:
+                    was_connected = self._connected
                     self._connected = False
-                self._hub.broadcast_status(False)
+                if was_connected:
+                    self._hub.broadcast_status(False)
                 if camera is not None:
                     try:
                         camera.StopGrabbing()
