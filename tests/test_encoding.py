@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import io
+
 import numpy as np
 
 from basler_camera_daemon.encoding import ImageEncoder
@@ -9,22 +13,29 @@ def _solid_frame(h: int = 4, w: int = 4) -> np.ndarray:
 
 
 def _is_jpeg(data: bytes) -> bool:
-    return data[:2] == b"\xff\xd8" and data[-2:] == b"\xff\xd9"
+    """Return True if data is a valid, decodable JPEG."""
+    from PIL import Image
+    try:
+        with Image.open(io.BytesIO(data)) as img:
+            img.verify()
+        return True
+    except Exception:
+        return False
 
 
-def test_encode_returns_bytes():
+def test_encode_returns_bytes() -> None:
     encoder = ImageEncoder()
     result = encoder.encode(_solid_frame(), quality=60)
     assert isinstance(result, bytes)
 
 
-def test_encode_produces_valid_jpeg():
+def test_encode_produces_valid_jpeg() -> None:
     encoder = ImageEncoder()
     result = encoder.encode(_solid_frame(), quality=60)
     assert _is_jpeg(result)
 
 
-def test_higher_quality_produces_larger_file():
+def test_higher_quality_produces_larger_file() -> None:
     encoder = ImageEncoder()
     # Use a noisy image so compression ratio varies meaningfully with quality
     rng = np.random.default_rng(0)
@@ -34,7 +45,7 @@ def test_higher_quality_produces_larger_file():
     assert len(high) > len(low)
 
 
-def test_encode_various_resolutions():
+def test_encode_various_resolutions() -> None:
     encoder = ImageEncoder()
     for h, w in [(4, 4), (64, 64), (480, 640)]:
         result = encoder.encode(_solid_frame(h, w), quality=60)
