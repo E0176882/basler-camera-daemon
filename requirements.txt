@@ -1,0 +1,2 @@
+# Dependencies are managed in pyproject.toml.
+# Dev install: pip install -e ".[dev]"
