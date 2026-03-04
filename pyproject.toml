@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.21"]
 build-backend = "hatchling.build"
 
 [project]
@@ -9,12 +9,13 @@ description = "HTTP + WebSocket daemon for Basler cameras"
 requires-python = ">=3.13"
 dependencies = [
     "aiohttp>=3.9",
+    "numpy>=1.26",
     "Pillow>=10.0",
-    "pypylon>=3.0",
+    "pypylon>=4.0",
 ]
 
 [project.optional-dependencies]
-dev   = ["ruff", "mypy", "pytest", "pytest-asyncio"]
+dev   = ["ruff", "mypy>=1.15", "pytest", "pytest-asyncio>=1.0"]
 build = ["pyinstaller"]
 
 [project.scripts]
@@ -28,11 +29,19 @@ target-version = "py313"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
+select = ["E", "W", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["basler_camera_daemon"]
 
 [tool.mypy]
 strict = true
 python_version = "3.13"
+mypy_path = ["src"]
+
+[[tool.mypy.overrides]]
+module = "pypylon.*"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
