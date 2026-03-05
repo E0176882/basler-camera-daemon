@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import importlib.resources
 import logging
 
@@ -28,6 +29,7 @@ class WebServer:
         self._encoder = encoder
         self._hub = hub
         self._viewer_html = self._load_viewer()
+        self._ws_clients: set[web.WebSocketResponse] = set()
 
     def _load_viewer(self) -> str:
         pkg = importlib.resources.files("basler_camera_daemon")
@@ -49,7 +51,15 @@ class WebServer:
 
     async def _on_shutdown(self, app: web.Application) -> None:
         log.info("Server shutting down, stopping camera…")
+        await self._close_all_stream_clients()
         await asyncio.get_running_loop().run_in_executor(None, self._camera.stop)
+
+    async def _close_all_stream_clients(self) -> None:
+        clients = list(self._ws_clients)
+        for ws in clients:
+            with contextlib.suppress(Exception):
+                await ws.close()
+            self._ws_clients.discard(ws)
 
     async def _handle_viewer(self, request: web.Request) -> web.Response:
         return web.Response(text=self._viewer_html, content_type="text/html", charset="utf-8")
@@ -60,6 +70,7 @@ class WebServer:
     async def _handle_stream(self, request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
+        self._ws_clients.add(ws)
 
         q: asyncio.Queue[bytes | str] = asyncio.Queue(maxsize=1)
         self._hub.add(q)
@@ -84,6 +95,9 @@ class WebServer:
                     break
         finally:
             self._hub.remove(q)
+            self._ws_clients.discard(ws)
+            with contextlib.suppress(Exception):
+                await ws.close()
             log.info("WS client disconnected (%d remaining)", self._hub.client_count())
 
         return ws

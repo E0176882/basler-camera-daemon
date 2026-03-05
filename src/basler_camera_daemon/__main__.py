@@ -32,7 +32,7 @@ def _run(mock: bool = False) -> None:
 
     app = server.build_app()
     log.info("Basler daemon listening on http://%s:%d  (viewer: /)", host, config.port)
-    web.run_app(app, host=host, port=config.port)
+    web.run_app(app, host=host, port=config.port, handler_cancellation=True)
     log.info("Daemon stopped")
 
 
