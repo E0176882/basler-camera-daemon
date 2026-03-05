@@ -80,7 +80,6 @@ _WIN_SVC_DESC = "HTTP + WebSocket daemon for Basler cameras"
 if sys.platform == "win32":
     import asyncio  # noqa: E402
     import logging  # noqa: E402
-    import os  # noqa: E402
     import threading  # noqa: E402
 
     import win32service  # type: ignore[import-untyped]  # noqa: E402
@@ -113,7 +112,7 @@ if sys.platform == "win32":
             from .server import WebServer
 
             config = CameraConfig.from_env()
-            host = os.environ.get("BASLER_HOST", "127.0.0.1")
+            host = "127.0.0.1"
             encoder = ImageEncoder()
             hub = FrameHub()
             camera = CameraService(config, encoder, hub)
