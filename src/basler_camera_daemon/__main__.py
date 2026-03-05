@@ -8,20 +8,27 @@ import sys
 from aiohttp import web
 
 from .camera import CameraService
+from .camera_protocol import CameraProtocol
 from .config import CameraConfig
 from .encoding import ImageEncoder
 from .hub import FrameHub
+from .mock_camera import MockCameraService
 from .server import WebServer
 
 log = logging.getLogger(__name__)
 
 
-def _run() -> None:
+def _run(mock: bool = False) -> None:
     config = CameraConfig.from_env()
     host = os.environ.get("BASLER_HOST", "127.0.0.1")
     encoder = ImageEncoder()
     hub = FrameHub()
-    camera = CameraService(config, encoder, hub)
+    camera: CameraProtocol
+    if mock:
+        log.info("Mock mode enabled — streaming synthetic test card")
+        camera = MockCameraService(config, encoder, hub)
+    else:
+        camera = CameraService(config, encoder, hub)
     server = WebServer(config, camera, encoder, hub)
 
     app = server.build_app()
@@ -38,7 +45,12 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(prog="basler-daemon", description="Basler camera daemon")
     sub = parser.add_subparsers(dest="command")
-    sub.add_parser("run", help="Run in the foreground (default)")
+    run_parser = sub.add_parser("run", help="Run in the foreground (default)")
+    run_parser.add_argument(
+        "--mock",
+        action="store_true",
+        help="Use synthetic SMPTE test-card feed (no camera required)",
+    )
     sub.add_parser("install", help="Register as an OS service with autostart")
     sub.add_parser("uninstall", help="Remove the OS service")
     sub.add_parser("start", help="Start the OS service")
@@ -47,7 +59,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command is None or args.command == "run":
-        _run()
+        _run(mock=getattr(args, "mock", False))
         return
 
     from . import service_manager
