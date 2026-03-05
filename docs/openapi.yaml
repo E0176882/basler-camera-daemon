@@ -19,7 +19,7 @@ paths:
       operationId: getHealth
       responses:
         '200':
-          description: Camera is running
+          description: Daemon is running
           content:
             application/json:
               schema:
@@ -32,13 +32,16 @@ paths:
                     example: ok
                   model:
                     type: string
-                    description: Camera model name as reported by pypylon
+                    description: Camera model name as reported by pypylon; "unknown" when camera is not connected
                     example: acA2040-90uc
 
   /stream:
     get:
       summary: Live camera stream (WebSocket)
       description: |
+        Clients must perform a standard WebSocket handshake (send
+        `Upgrade: websocket` and `Connection: Upgrade` headers).
+
         Upgrades to a WebSocket connection. The server sends two types of messages:
 
         **Binary frames** — Raw JPEG bytes at the camera's native frame rate.
@@ -74,7 +77,8 @@ paths:
                 properties:
                   image_base64:
                     type: string
-                    format: byte
+                    contentEncoding: base64
+                    contentMediaType: image/jpeg
                     description: Base64-encoded JPEG image
         '503':
           description: No frame available yet
