@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import logging
 import threading
-import time
 from datetime import datetime
 from typing import Any
 
@@ -11,6 +11,8 @@ from PIL import Image, ImageDraw
 from .config import CameraConfig
 from .encoding import ImageEncoder
 from .hub import FrameHub
+
+log = logging.getLogger(__name__)
 
 # Classic SMPTE 75% color bars (8 bands, RGB values)
 _SMPTE_COLORS: list[tuple[int, int, int]] = [
@@ -76,6 +78,8 @@ class MockCameraService:
         self._stop_event.set()
         if self._thread is not None:
             self._thread.join(timeout=5)
+            if self._thread.is_alive():
+                log.error("Mock camera thread did not stop within 5 s")
 
     def _make_base(self) -> np.ndarray[Any, np.dtype[Any]]:
         arr: np.ndarray[Any, np.dtype[Any]] = np.zeros((_HEIGHT, _WIDTH, 3), dtype=np.uint8)
@@ -101,7 +105,7 @@ class MockCameraService:
                 arr: np.ndarray[Any, np.dtype[Any]] = np.array(img)
                 jpeg = self._encoder.encode(arr, self._config.stream_quality)
                 with self._lock:
-                    self._latest_raw = arr
+                    self._latest_raw = arr.copy()
                 self._hub.broadcast(jpeg)
                 self._stop_event.wait(1.0 / _FPS)
         finally:
