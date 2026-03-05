@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import os
 import sys
 
 from aiohttp import web
@@ -20,7 +19,7 @@ log = logging.getLogger(__name__)
 
 def _run(mock: bool = False) -> None:
     config = CameraConfig.from_env()
-    host = os.environ.get("BASLER_HOST", "127.0.0.1")
+    host = "127.0.0.1"
     encoder = ImageEncoder()
     hub = FrameHub()
     camera: CameraProtocol

@@ -35,19 +35,17 @@ basler-daemon
 python -m basler_camera_daemon
 ```
 
-Optional environment variables:
+Optional environment variable:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BASLER_HOST` | `127.0.0.1` | Bind address |
-| `BASLER_PORT` | `8082` | Listening port |
 | `BASLER_AUTO_EXPOSURE_MAX_US` | `10000` | Auto-exposure upper limit (µs) |
 
 ## API
 
 ### `GET /` — Browser viewer
 
-Open `http://127.0.0.1:8082` in a browser to see the live stream. The page shows:
+Open `http://127.0.0.1:47420` in a browser to see the live stream. The page shows:
 - Live JPEG frames via WebSocket (connection status indicator)
 - Camera model from `/health`
 - **Capture** button — grabs a quality-92 frame and displays it alongside the stream
@@ -57,7 +55,7 @@ Open `http://127.0.0.1:8082` in a browser to see the live stream. The page shows
 Returns camera status and model name.
 
 ```bash
-curl http://127.0.0.1:8082/health
+curl http://127.0.0.1:47420/health
 ```
 
 ```json
@@ -70,13 +68,13 @@ Binary JPEG frames at the camera's native rate. Slow clients silently drop frame
 
 ```bash
 # Using wscat
-wscat -b ws://127.0.0.1:8082/stream
+wscat -b ws://127.0.0.1:47420/stream
 ```
 
 In a browser:
 
 ```js
-const ws = new WebSocket("ws://127.0.0.1:8082/stream");
+const ws = new WebSocket("ws://127.0.0.1:47420/stream");
 ws.binaryType = "arraybuffer";
 ws.onmessage = (e) => {
   const blob = new Blob([e.data], { type: "image/jpeg" });
@@ -89,7 +87,7 @@ ws.onmessage = (e) => {
 Returns a single high-quality JPEG (quality 92) as base64. No disk write.
 
 ```bash
-curl -s -X POST http://127.0.0.1:8082/capture \
+curl -s -X POST http://127.0.0.1:47420/capture \
   | python3 -c "
 import sys, json, base64
 d = json.load(sys.stdin)
