@@ -46,12 +46,13 @@ class CameraService:
             return self._connected
 
     def get_latest_raw(self) -> np.ndarray[Any, np.dtype[Any]] | None:
-        # Returns a copy of the most recently grabbed frame.
-        # The copy is owned by Python; callers may read it safely after this call returns.
+        # Returns the internally-owned copy of the most recently grabbed frame.
+        # Callers must not mutate the returned array; it is shared internal state.
         with self._raw_lock:
             return self._latest_raw
 
     def start(self) -> None:
+        self._stop_event.clear()
         self._thread = threading.Thread(target=self._grab_loop, daemon=True, name="camera")
         self._thread.start()
 
@@ -148,6 +149,8 @@ class CameraService:
 
             except pylon.GenericException as exc:
                 log.warning("Camera error: %s \u2014 retrying in %.0f s", exc, backoff)
+            except Exception as exc:
+                log.error("Unexpected grab-loop error: %s \u2014 retrying in %.0f s", exc, backoff)
             finally:
                 with self._raw_lock:
                     was_connected = self._connected

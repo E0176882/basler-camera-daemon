@@ -64,6 +64,8 @@ class MockCameraService:
             return self._connected
 
     def get_latest_raw(self) -> np.ndarray[Any, np.dtype[Any]] | None:
+        # Returns the internally-owned copy of the most recently generated frame.
+        # Callers must not mutate the returned array; it is shared internal state.
         with self._lock:
             return self._latest_raw
 

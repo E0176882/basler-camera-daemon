@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import io
+from typing import Any
 
 import numpy as np
 
 from basler_camera_daemon.encoding import ImageEncoder
 
 
-def _solid_frame(h: int = 4, w: int = 4) -> np.ndarray:
+def _solid_frame(h: int = 4, w: int = 4) -> np.ndarray[Any, np.dtype[Any]]:
     """Return a small solid-colour RGB array."""
     return np.zeros((h, w, 3), dtype=np.uint8)
 
