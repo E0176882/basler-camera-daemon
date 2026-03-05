@@ -17,13 +17,13 @@ log = logging.getLogger(__name__)
 # Classic SMPTE 75% color bars (8 bands, RGB values)
 _SMPTE_COLORS: list[tuple[int, int, int]] = [
     (235, 235, 235),  # White
-    (235, 235, 16),   # Yellow
-    (16, 235, 235),   # Cyan
-    (16, 235, 16),    # Green
-    (235, 16, 235),   # Magenta
-    (235, 16, 16),    # Red
-    (16, 16, 235),    # Blue
-    (16, 16, 16),     # Black
+    (235, 235, 16),  # Yellow
+    (16, 235, 235),  # Cyan
+    (16, 235, 16),  # Green
+    (235, 16, 235),  # Magenta
+    (235, 16, 16),  # Red
+    (16, 16, 235),  # Blue
+    (16, 16, 16),  # Black
 ]
 
 _WIDTH = 1280
@@ -69,9 +69,7 @@ class MockCameraService:
 
     def start(self) -> None:
         self._stop_event.clear()
-        self._thread = threading.Thread(
-            target=self._generate_loop, daemon=True, name="mock-camera"
-        )
+        self._thread = threading.Thread(target=self._generate_loop, daemon=True, name="mock-camera")
         self._thread.start()
 
     def stop(self) -> None:

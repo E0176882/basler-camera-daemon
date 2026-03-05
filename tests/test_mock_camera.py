@@ -12,7 +12,9 @@ from basler_camera_daemon.mock_camera import MockCameraService
 
 @pytest.fixture
 def config() -> CameraConfig:
-    return CameraConfig(port=8082, auto_exposure_max_us=10000, stream_quality=75, capture_quality=92)
+    return CameraConfig(
+        port=8082, auto_exposure_max_us=10000, stream_quality=75, capture_quality=92
+    )
 
 
 @pytest.fixture
