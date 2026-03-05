@@ -1,0 +1,89 @@
+openapi: 3.1.0
+
+info:
+  title: Basler Camera Daemon
+  version: 0.1.0
+  description: >
+    Localhost HTTP + WebSocket daemon that owns a Basler camera for its lifetime
+    and streams live JPEG frames. Always bound to 127.0.0.1:47420.
+
+servers:
+  - url: http://127.0.0.1:47420
+    description: Local daemon
+
+paths:
+  /health:
+    get:
+      summary: Camera status
+      description: Returns camera connection status and model name.
+      operationId: getHealth
+      responses:
+        '200':
+          description: Camera is running
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, model]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                    example: ok
+                  model:
+                    type: string
+                    description: Camera model name as reported by pypylon
+                    example: acA2040-90uc
+
+  /stream:
+    get:
+      summary: Live camera stream (WebSocket)
+      description: |
+        Upgrades to a WebSocket connection. The server sends two types of messages:
+
+        **Binary frames** — Raw JPEG bytes at the camera's native frame rate.
+        Slow clients silently drop frames (internal queue depth = 1).
+
+        **Text messages** — JSON status notifications sent immediately on connect
+        and whenever the camera connects or disconnects:
+        ```json
+        {"type": "status", "connected": true}
+        {"type": "status", "connected": false}
+        ```
+      operationId: getStream
+      responses:
+        '101':
+          description: Switching Protocols — WebSocket connection established
+
+  /capture:
+    post:
+      summary: Capture a single frame
+      description: >
+        Returns the most recently grabbed frame as a high-quality JPEG (quality 92)
+        encoded as base64. No data is written to disk.
+        Returns 503 if no frame has been grabbed yet (camera not ready).
+      operationId: postCapture
+      responses:
+        '200':
+          description: JPEG frame as base64
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [image_base64]
+                properties:
+                  image_base64:
+                    type: string
+                    format: byte
+                    description: Base64-encoded JPEG image
+        '503':
+          description: No frame available yet
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error:
+                    type: string
+                    example: no frame available
