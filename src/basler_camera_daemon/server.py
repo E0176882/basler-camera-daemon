@@ -5,6 +5,7 @@ import base64
 import contextlib
 import importlib.resources
 import logging
+from collections.abc import Awaitable, Callable
 
 from aiohttp import ClientConnectionResetError, web
 
@@ -14,6 +15,26 @@ from .encoding import ImageEncoder
 from .hub import FrameHub
 
 log = logging.getLogger(__name__)
+
+_CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+}
+
+
+@web.middleware
+async def _cors_middleware(
+    request: web.Request,
+    handler: Callable[[web.Request], Awaitable[web.StreamResponse]],
+) -> web.StreamResponse:
+    response = await handler(request)
+    response.headers.update(_CORS_HEADERS)
+    return response
+
+
+async def _handle_preflight(request: web.Request) -> web.Response:
+    return web.Response(headers=_CORS_HEADERS)
 
 
 class WebServer:
@@ -36,11 +57,12 @@ class WebServer:
         return (pkg / "static" / "viewer.html").read_text(encoding="utf-8")
 
     def build_app(self) -> web.Application:
-        app = web.Application()
+        app = web.Application(middlewares=[_cors_middleware])
         app.router.add_get("/", self._handle_viewer)
         app.router.add_get("/health", self._handle_health)
         app.router.add_get("/stream", self._handle_stream)
         app.router.add_post("/capture", self._handle_capture)
+        app.router.add_route("OPTIONS", "/{path_info:.*}", _handle_preflight)
         app.on_startup.append(self._on_startup)
         app.on_shutdown.append(self._on_shutdown)
         return app
