@@ -7,7 +7,7 @@ import logging
 
 from aiohttp import ClientConnectionResetError, web
 
-from .camera import CameraService
+from .camera_protocol import CameraProtocol
 from .config import CameraConfig
 from .encoding import ImageEncoder
 from .hub import FrameHub
@@ -19,7 +19,7 @@ class WebServer:
     def __init__(
         self,
         config: CameraConfig,
-        camera: CameraService,
+        camera: CameraProtocol,
         encoder: ImageEncoder,
         hub: FrameHub,
     ) -> None:
