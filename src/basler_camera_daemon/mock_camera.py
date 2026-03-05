@@ -99,6 +99,8 @@ class MockCameraService:
                 img = Image.fromarray(frame)
                 draw = ImageDraw.Draw(img)
                 ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+                bbox = draw.textbbox((10, 10), ts)
+                draw.rectangle((bbox[0] - 2, bbox[1] - 2, bbox[2] + 2, bbox[3] + 2), fill=(0, 0, 0))
                 draw.text((10, 10), ts, fill=(255, 255, 255))
                 arr: np.ndarray[Any, np.dtype[Any]] = np.array(img)
                 jpeg = self._encoder.encode(arr, self._config.stream_quality)
